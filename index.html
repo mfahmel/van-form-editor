@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Form Editor — MB Ticket System</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #f0f4f8; color: #2d3748;
+  height: 100vh; overflow: hidden;
+  display: grid;
+  grid-template-rows: 1fr 136px;
+}
+
+/* THREE-PANE WORKSPACE */
+.workspace {
+  display: grid;
+  grid-template-columns: 220px 1fr 1fr;
+  overflow: hidden;
+  grid-row: 1;
+}
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  background: #1a202c;
+  display: flex; flex-direction: column; overflow: hidden;
+  border-right: 1px solid #2d3748;
+}
+.sidebar-logo {
+  padding: 18px 16px 8px;
+  font-size: 26px; font-weight: 800; letter-spacing: -2px;
+  color: #8dc63f; line-height: 1;
+}
+.sidebar-logo span { color: #1c6eb3; }
+.sidebar-label {
+  padding: 0 16px 10px;
+  font-size: 10px; font-weight: 700; color: #4a5568;
+  text-transform: uppercase; letter-spacing: .7px;
+}
+.section-list { flex: 1; overflow-y: auto; }
+.section-item {
+  padding: 8px 16px; font-size: 12px; color: #718096;
+  cursor: pointer; border-left: 3px solid transparent;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.section-item:hover { background: #2d3748; color: #e2e8f0; }
+.section-item.active { background: #2d3748; color: #fff; border-left-color: #8dc63f; }
+.section-group-header {
+  padding: 12px 16px 2px;
+  font-size: 9px; font-weight: 700; color: #4a5568;
+  text-transform: uppercase; letter-spacing: .8px;
+}
+.sidebar-footer { padding: 12px 16px; border-top: 1px solid #2d3748; }
+.export-btn {
+  width: 100%; padding: 9px; background: #8dc63f; color: #fff;
+  border: none; border-radius: 6px; font-size: 12px; font-weight: 700;
+  cursor: pointer;
+}
+.export-btn:hover { background: #74a832; }
+
+/* ─── EDITOR ─── */
+.editor {
+  background: #f7fafc; display: flex; flex-direction: column;
+  overflow: hidden; border-right: 1px solid #e2e8f0;
+}
+.editor-header {
+  padding: 14px 18px 10px; background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+}
+.editor-title { font-size: 14px; font-weight: 700; color: #1a202c; }
+.editor-subtitle { font-size: 11px; color: #718096; margin-top: 2px; }
+.add-btn {
+  padding: 7px 14px; background: #1c6eb3; color: #fff;
+  border: none; border-radius: 6px; font-size: 12px; font-weight: 600;
+  cursor: pointer; flex-shrink: 0;
+}
+.add-btn:hover { background: #155a96; }
+.field-list { flex: 1; overflow-y: auto; padding: 14px 18px 0; }
+.empty-hint { text-align: center; padding: 48px 16px; color: #a0aec0; font-size: 13px; }
+.notes-wrap { padding: 10px 18px 14px; border-top: 1px solid #e2e8f0; flex-shrink: 0; }
+.notes-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #718096; margin-bottom: 4px; }
+.notes-input {
+  width: 100%; border: 1px solid #e2e8f0; border-radius: 6px;
+  padding: 7px 10px; font-size: 12px; font-family: inherit;
+  color: #4a5568; resize: none; height: 50px; background: #fff;
+}
+.notes-input:focus { outline: none; border-color: #1c6eb3; }
+
+/* field cards */
+.field-card {
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 7px;
+  padding: 9px 12px; margin-bottom: 7px;
+  display: flex; align-items: center; gap: 8px;
+}
+.field-card.drag-over { border-color: #8dc63f; box-shadow: 0 0 0 2px #8dc63f44; }
+.field-card.dragging { opacity: .3; }
+.drag-handle { color: #cbd5e0; cursor: grab; font-size: 14px; user-select: none; flex-shrink: 0; }
+.drag-handle:active { cursor: grabbing; }
+.field-name {
+  flex: 1; font-size: 13px; font-weight: 500; outline: none;
+  border: none; background: transparent; color: #2d3748; min-width: 0;
+}
+.field-name:empty::before { content: attr(placeholder); color: #a0aec0; }
+.type-select {
+  font-size: 11px; border: 1px solid #e2e8f0; background: #f7fafc;
+  color: #718096; padding: 3px 5px; border-radius: 4px; cursor: pointer; flex-shrink: 0;
+}
+.req-btn {
+  font-size: 11px; font-weight: 700; padding: 3px 8px;
+  border-radius: 10px; cursor: pointer; border: none; flex-shrink: 0;
+}
+.req-btn.required { background: #fed7d7; color: #c53030; }
+.req-btn.optional { background: #f7fafc; color: #718096; border: 1px solid #e2e8f0; }
+.del-btn { background: none; border: none; color: #cbd5e0; font-size: 15px; cursor: pointer; padding: 2px; flex-shrink: 0; }
+.del-btn:hover { color: #e53e3e; }
+
+/* ─── PREVIEW ─── */
+.preview-pane { background: #e6eef5; overflow-y: auto; padding: 20px; }
+.preview-inner {
+  background: #fff; border: 1px solid #d7e0e8;
+  box-shadow: 0 2px 6px rgba(0,0,0,.04);
+  padding: 28px 32px 36px; max-width: 460px; margin: 0 auto;
+}
+.preview-header {
+  display: flex; align-items: center; gap: 14px;
+  margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #e2e8f0;
+}
+.preview-logo { font-size: 36px; font-weight: 800; color: #8dc63f; letter-spacing: -3px; line-height: 1; }
+.preview-logo span { color: #1c6eb3; }
+.preview-title { font-size: 16px; font-weight: 600; color: #33475b; margin: 0; }
+.pv-field { margin-bottom: 14px; }
+.pv-label { font-size: 12px; font-weight: 600; color: #33475b; display: block; margin-bottom: 4px; }
+.pv-req { color: #d14343; }
+.pv-input, .pv-select, .pv-textarea {
+  width: 100%; padding: 6px 9px; border: 1px solid #cbd6e2;
+  border-radius: 3px; background: #f5f8fa; font-size: 12px;
+  color: #33475b; font-family: inherit;
+}
+.pv-textarea { min-height: 66px; resize: vertical; }
+.pv-radio, .pv-checkbox { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 4px; font-size: 12px; color: #33475b; }
+.pv-radio label, .pv-checkbox label { display: inline-flex; align-items: center; gap: 5px; cursor: default; }
+.pv-file-btn {
+  margin-top: 4px; background: #fff; border: 1px solid #8a8a8a;
+  padding: 2px 8px; font-size: 12px; border-radius: 2px; font-family: inherit;
+}
+.pv-empty { color: #a0aec0; font-size: 13px; padding: 32px 0; text-align: center; }
+
+/* ─── PRIORITY BOARD ─── */
+.priority-board {
+  background: #1a202c; border-top: 2px solid #8dc63f; grid-row: 2;
+  padding: 10px 18px 12px; overflow-x: auto;
+  display: flex; flex-direction: column; gap: 6px; flex-shrink: 0;
+}
+.pb-header { display: flex; align-items: center; gap: 10px; }
+.pb-title { font-size: 10px; font-weight: 700; color: #8dc63f; text-transform: uppercase; letter-spacing: .8px; flex-shrink: 0; }
+.pb-sub { font-size: 10px; color: #4a5568; }
+.pb-rules { display: flex; gap: 8px; }
+.pb-rule {
+  background: #2d3748; border-radius: 6px; padding: 7px 10px;
+  display: flex; flex-direction: column; gap: 3px;
+  min-width: 154px; border-left: 3px solid #4a5568; flex-shrink: 0;
+}
+.pb-rule.p1 { border-left-color: #fc8181; }
+.pb-rule.p2 { border-left-color: #f6ad55; }
+.pb-rule.p3 { border-left-color: #fbd38d; }
+.pb-rule.p4 { border-left-color: #68d391; }
+.pb-rule.p5 { border-left-color: #63b3ed; }
+.pb-cell {
+  font-size: 10px; outline: none; background: transparent;
+  border: none; border-bottom: 1px dashed transparent;
+  color: #a0aec0; cursor: text; width: 100%;
+  font-family: inherit; padding: 0;
+}
+.pb-cell:focus { border-bottom-color: #4a5568; color: #e2e8f0; }
+.pb-priority { font-size: 11px; font-weight: 700; }
+.pb-rule.p1 .pb-priority { color: #fc8181; }
+.pb-rule.p2 .pb-priority { color: #f6ad55; }
+.pb-rule.p3 .pb-priority { color: #fbd38d; }
+.pb-rule.p4 .pb-priority { color: #68d391; }
+.pb-rule.p5 .pb-priority { color: #63b3ed; }
+
+/* ─── EXPORT MODAL ─── */
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 100; align-items: center; justify-content: center; }
+.modal-bg.open { display: flex; }
+.modal { background: #fff; border-radius: 10px; width: 600px; max-width: 90vw; max-height: 80vh; display: flex; flex-direction: column; }
+.modal-head { padding: 14px 18px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+.modal-head h3 { font-size: 15px; font-weight: 700; }
+.modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #718096; }
+.modal-body { padding: 16px 18px; overflow-y: auto; flex: 1; }
+.export-pre { font-family: "SF Mono", Consolas, monospace; font-size: 12px; line-height: 1.6; white-space: pre-wrap; color: #2d3748; background: #f7fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; max-height: 380px; overflow-y: auto; }
+.modal-foot { padding: 12px 18px; border-top: 1px solid #e2e8f0; display: flex; gap: 10px; justify-content: flex-end; }
+.copy-btn { padding: 8px 18px; background: #1c6eb3; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.copy-btn.ok { background: #38a169; }
+.cancel-btn { padding: 8px 14px; background: #f7fafc; color: #4a5568; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div class="workspace">
+  <aside class="sidebar">
+    <div class="sidebar-logo">VA<span>N</span></div>
+    <div class="sidebar-label">Form sections</div>
+    <div class="section-list" id="sectionList"></div>
+    <div class="sidebar-footer">
+      <button class="export-btn" onclick="openExport()">Export for Claude</button>
+    </div>
+  </aside>
+
+  <div class="editor">
+    <div class="editor-header">
+      <div>
+        <div class="editor-title" id="editorTitle">Select a section</div>
+        <div class="editor-subtitle" id="editorSubtitle">Click a section on the left to start</div>
+      </div>
+      <button class="add-btn" id="addBtn" onclick="addField()" style="display:none">+ Add field</button>
+    </div>
+    <div class="field-list" id="fieldList">
+      <div class="empty-hint">← Select a section to edit its fields</div>
+    </div>
+    <div class="notes-wrap" id="notesWrap" style="display:none">
+      <div class="notes-label">Notes for Mary</div>
+      <textarea class="notes-input" id="notesInput" placeholder="Questions or comments for this section..." oninput="saveNotes()"></textarea>
+    </div>
+  </div>
+
+  <div class="preview-pane" id="previewPane">
+    <div class="preview-inner">
+      <div class="pv-empty">← Select a section to preview the form</div>
+    </div>
+  </div>
+</div>
+
+<div class="priority-board">
+  <div class="pb-header">
+    <div class="pb-title">Priority routing</div>
+    <div class="pb-sub">Click any cell to edit — priority is calculated from Active FB account count</div>
+  </div>
+  <div class="pb-rules" id="pbRules"></div>
+</div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Export — paste this to Claude</h3>
+      <button class="modal-close" onclick="closeExport()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="export-pre" id="exportPre"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="cancel-btn" onclick="closeExport()">Close</button>
+      <button class="copy-btn" id="copyBtn" onclick="copyExport()">Copy to clipboard</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const FIELD_TYPES = ['text','email','select','radio','checkbox','textarea','file','number'];
+let activeSection = null;
+let dragSrc = null;
+
+const data = {
+  sections: [
+    { id:'global', label:'Always visible', group:null,
+      subtitle:'These fields show on every ticket regardless of category.', notes:'',
+      fields:[
+        {id:'g1', name:'Email', type:'email', required:true},
+        {id:'g2', name:'Dealership account', type:'text', required:true},
+        {id:'g3', name:'Have you checked the knowledge base?', type:'radio', required:true},
+        {id:'g4', name:'Issue Type', type:'select', required:true},
+        {id:'g5', name:'Impact on your work (P1–P5)', type:'select', required:true},
+        {id:'g6', name:'Active FB accounts right now', type:'select', required:true},
+        {id:'g7', name:'Issue description', type:'textarea', required:false},
+      ]},
+    { id:'fb', label:'FB Account Issue', group:null,
+      subtitle:'Shows when Issue Type = FB Account Issue.', notes:'',
+      fields:[
+        {id:'fb1', name:'FB account name', type:'text', required:true},
+        {id:'fb2', name:'Did you check Kameleo first?', type:'radio', required:true},
+        {id:'fb3', name:'FB account issue type', type:'select', required:true},
+        {id:'fb4', name:'What did you see in Kameleo?', type:'select', required:true},
+        {id:'fb5', name:'Type of verification (if verification required)', type:'select', required:false},
+        {id:'fb6', name:'Exact error code (if Kameleo error)', type:'text', required:false},
+        {id:'fb7', name:'Issue screenshot', type:'file', required:true},
+      ]},
+    { id:'van-msg', label:'Messaging', group:'VAN Platform Bug',
+      subtitle:"Shows when VAN Bug → Message(s) won't send.", notes:'',
+      fields:[
+        {id:'vm1', name:'Which channel(s) failed?', type:'checkbox', required:true},
+        {id:'vm2', name:'FB account used (if FB channel)', type:'text', required:false},
+        {id:'vm3', name:'Engage VDP URL', type:'text', required:true},
+        {id:'vm4', name:'Already retried?', type:'radio', required:true},
+        {id:'vm5', name:'Lead or contact name', type:'text', required:false},
+        {id:'vm6', name:'Did several messages fail?', type:'radio', required:false},
+        {id:'vm7', name:'Additional listing URLs (if several)', type:'text', required:false},
+        {id:'vm8', name:'Issue screenshot', type:'file', required:true},
+      ]},
+    { id:'van-slow', label:'VAN is slow', group:'VAN Platform Bug',
+      subtitle:'Shows when VAN Bug → VAN is slow.', notes:'',
+      fields:[
+        {id:'vs1', name:'Where is the slowness?', type:'checkbox', required:true},
+        {id:'vs2', name:'How long does it take?', type:'select', required:true},
+        {id:'vs3', name:'Did you ask the team?', type:'radio', required:true},
+      ]},
+    { id:'van-calls', label:'Calls not working', group:'VAN Platform Bug',
+      subtitle:'Shows when VAN Bug → Calls are not working.', notes:'',
+      fields:[
+        {id:'vc1', name:'Which symptom(s)?', type:'checkbox', required:true},
+        {id:'vc2', name:'Your Google Voice number', type:'text', required:true},
+        {id:'vc3', name:'How often does it fail?', type:'select', required:true},
+        {id:'vc4', name:'Engage VDP URL', type:'text', required:false},
+        {id:'vc5', name:'Did you ask the team?', type:'radio', required:true},
+      ]},
+    { id:'van-update', label:'Errors after update', group:'VAN Platform Bug',
+      subtitle:'Shows when VAN Bug → Errors after a VAN update.', notes:'',
+      fields:[
+        {id:'vu1', name:'Which symptom(s)?', type:'checkbox', required:true},
+        {id:'vu2', name:'Which area of VAN?', type:'checkbox', required:false},
+        {id:'vu3', name:'Issue screenshot', type:'file', required:true},
+        {id:'vu4', name:'Did you ask the team?', type:'radio', required:true},
+        {id:'vu5', name:'Browser used', type:'select', required:false},
+      ]},
+    { id:'van-vauto', label:'vAuto sync', group:'VAN Platform Bug',
+      subtitle:'Shows when VAN Bug → Data not pushing to vAuto.', notes:'',
+      fields:[
+        {id:'vv1', name:'Vehicle VIN', type:'text', required:true},
+        {id:'vv2', name:'Which data fields are missing?', type:'checkbox', required:true},
+        {id:'vv3', name:'VAN status indicator', type:'radio', required:true},
+        {id:'vv4', name:'Confirmed not in vAuto?', type:'radio', required:true},
+        {id:'vv5', name:'Screenshot of VAN push status', type:'file', required:true},
+        {id:'vv6', name:'Screenshot of vAuto (missing data)', type:'file', required:false},
+      ]},
+    { id:'van-feature', label:'Feature not working', group:'VAN Platform Bug',
+      subtitle:"Shows when VAN Bug → A specific VAN feature doesn't work.", notes:'',
+      fields:[
+        {id:'vf1', name:'Which feature?', type:'select', required:true},
+        {id:'vf2', name:'What happens?', type:'select', required:true},
+        {id:'vf3', name:'Exact error message (if any)', type:'text', required:false},
+        {id:'vf4', name:'Data you used when it failed', type:'text', required:true},
+        {id:'vf5', name:'Issue screenshot', type:'file', required:true},
+      ]},
+    { id:'kameleo', label:'Kameleo / VPN Issue', group:null,
+      subtitle:'Shows when Issue Type = Kameleo / VPN Issue.', notes:'',
+      fields:[
+        {id:'km1', name:'What problem do you see?', type:'checkbox', required:true},
+        {id:'km2', name:'Kameleo profile name or ID', type:'text', required:true},
+        {id:'km3', name:'Specific error seen', type:'checkbox', required:false},
+        {id:'km4', name:'Exact error code or message', type:'textarea', required:true},
+        {id:'km5', name:'What have you tried?', type:'checkbox', required:true},
+        {id:'km6', name:'Did you ask the team in Chat?', type:'radio', required:true},
+        {id:'km7', name:'Issue screenshot', type:'file', required:true},
+      ]},
+    { id:'req-newfb', label:'New FB account', group:'Request',
+      subtitle:'Shows when Request → New FB account (blocked/disabled).', notes:'',
+      fields:[
+        {id:'rn1', name:'Which accounts are blocked?', type:'text', required:false},
+        {id:'rn2', name:'Already requested via Chat/email?', type:'radio', required:true},
+        {id:'rn3', name:'Has it been more than 2 days?', type:'radio', required:true},
+        {id:'rn4', name:'Your manager', type:'text', required:false},
+      ]},
+    { id:'req-bo', label:'Back Office access', group:'Request',
+      subtitle:'Shows when Request → Back Office access.', notes:'',
+      fields:[
+        {id:'rb1', name:'Reason for the request', type:'select', required:true},
+        {id:'rb2', name:'Error message when trying to log in?', type:'radio', required:true},
+        {id:'rb3', name:'Exact error message (if yes)', type:'text', required:false},
+        {id:'rb4', name:'Screenshot of the error (if yes)', type:'file', required:false},
+        {id:'rb5', name:'Already asked your manager?', type:'radio', required:true},
+      ]},
+  ],
+  priorityRules: [
+    {id:'r1', condition:'Active FB = 0',      priority:'P1 — Urgent',   owner:'Nelson (MB-FB)',      cls:'p1'},
+    {id:'r2', condition:'Active FB = 1',      priority:'P2 — High',     owner:'Nelson (MB-FB)',      cls:'p2'},
+    {id:'r3', condition:'Active FB = 2',      priority:'P3 — Medium',   owner:'Nelson (MB-FB)',      cls:'p3'},
+    {id:'r4', condition:'Active FB = 3+',     priority:'P4 — Low',      owner:'Mary (MB-Platform)',  cls:'p4'},
+    {id:'r5', condition:'VAN Bug / Request',  priority:'P3 — default',  owner:'Mary (MB-Platform)',  cls:'p3'},
+  ]
+};
+
+// ── SIDEBAR ───────────────────────────────────────────────────────────────────
+
+function renderSidebar() {
+  const list = document.getElementById('sectionList');
+  list.innerHTML = '';
+  let lastGroup;
+  data.sections.forEach(sec => {
+    if (sec.group !== lastGroup) {
+      lastGroup = sec.group;
+      if (sec.group) {
+        const g = document.createElement('div');
+        g.className = 'section-group-header';
+        g.textContent = sec.group;
+        list.appendChild(g);
+      }
+    }
+    const el = document.createElement('div');
+    el.className = 'section-item' + (activeSection === sec.id ? ' active' : '');
+    el.textContent = (sec.group ? '↳ ' : '') + sec.label;
+    el.title = sec.label;
+    el.onclick = () => selectSection(sec.id);
+    list.appendChild(el);
+  });
+}
+
+function selectSection(id) {
+  activeSection = id;
+  renderSidebar();
+  renderEditor();
+  renderPreview();
+}
+
+function getSection() {
+  return data.sections.find(s => s.id === activeSection) ?? null;
+}
+
+// ── EDITOR ────────────────────────────────────────────────────────────────────
+
+function renderEditor() {
+  const sec = getSection();
+  if (!sec) return;
+
+  document.getElementById('editorTitle').textContent =
+    sec.group ? sec.group + ' › ' + sec.label : sec.label;
+  document.getElementById('editorSubtitle').textContent = sec.subtitle;
+  document.getElementById('addBtn').style.display = '';
+  document.getElementById('notesWrap').style.display = '';
+  document.getElementById('notesInput').value = sec.notes || '';
+
+  const list = document.getElementById('fieldList');
+  list.innerHTML = '';
+
+  if (!sec.fields.length) {
+    list.innerHTML = '<div class="empty-hint">No fields — click "+ Add field" to add one</div>';
+    return;
+  }
+  sec.fields.forEach(f => list.appendChild(buildCard(f)));
+}
+
+function buildCard(field) {
+  const card = document.createElement('div');
+  card.className = 'field-card';
+  card.dataset.id = field.id;
+  card.draggable = true;
+  card.ondragstart = () => { dragSrc = card; card.classList.add('dragging'); };
+  card.ondragend   = () => { card.classList.remove('dragging'); dragSrc = null; };
+  card.ondragover  = e => { e.preventDefault(); card.classList.add('drag-over'); };
+  card.ondragleave = () => card.classList.remove('drag-over');
+  card.ondrop      = e => { e.preventDefault(); card.classList.remove('drag-over'); if (dragSrc) reorderField(dragSrc.dataset.id, field.id); };
+
+  const handle = document.createElement('span');
+  handle.className = 'drag-handle'; handle.textContent = '⠿'; handle.title = 'Drag to reorder';
+
+  const nameEl = document.createElement('div');
+  nameEl.className = 'field-name'; nameEl.contentEditable = 'true'; nameEl.textContent = field.name;
+  nameEl.setAttribute('placeholder', 'Field name');
+  nameEl.oninput = () => { const n = nameEl.textContent.trim(); if (n) field.name = n; renderPreview(); };
+
+  const typeEl = document.createElement('select');
+  typeEl.className = 'type-select';
+  FIELD_TYPES.forEach(t => {
+    const o = document.createElement('option');
+    o.value = t; o.textContent = t; if (t === field.type) o.selected = true;
+    typeEl.appendChild(o);
+  });
+  typeEl.onchange = () => { field.type = typeEl.value; renderPreview(); };
+
+  const reqBtn = document.createElement('button');
+  reqBtn.className = 'req-btn ' + (field.required ? 'required' : 'optional');
+  reqBtn.textContent = field.required ? '* required' : 'optional';
+  reqBtn.onclick = () => {
+    field.required = !field.required;
+    reqBtn.className = 'req-btn ' + (field.required ? 'required' : 'optional');
+    reqBtn.textContent = field.required ? '* required' : 'optional';
+    renderPreview();
+  };
+
+  const delBtn = document.createElement('button');
+  delBtn.className = 'del-btn'; delBtn.textContent = '🗑'; delBtn.title = 'Delete field';
+  delBtn.onclick = () => deleteField(field.id);
+
+  card.append(handle, nameEl, typeEl, reqBtn, delBtn);
+  return card;
+}
+
+function reorderField(srcId, tgtId) {
+  if (srcId === tgtId) return;
+  const fields = getSection().fields;
+  const si = fields.findIndex(f => f.id === srcId);
+  const ti = fields.findIndex(f => f.id === tgtId);
+  const [moved] = fields.splice(si, 1);
+  fields.splice(si < ti ? ti - 1 : ti, 0, moved);
+  renderEditor(); renderPreview();
+}
+
+function addField() {
+  const sec = getSection(); if (!sec) return;
+  sec.fields.push({ id: sec.id + '_' + Date.now(), name:'New field', type:'text', required:false });
+  renderEditor(); renderPreview();
+  setTimeout(() => {
+    const cards = document.querySelectorAll('.field-card');
+    if (cards.length) cards[cards.length - 1].querySelector('.field-name').focus();
+  }, 40);
+}
+
+function deleteField(id) {
+  const sec = getSection();
+  sec.fields = sec.fields.filter(f => f.id !== id);
+  renderEditor(); renderPreview();
+}
+
+function saveNotes() {
+  const sec = getSection(); if (sec) sec.notes = document.getElementById('notesInput').value;
+}
+
+// ── PREVIEW ───────────────────────────────────────────────────────────────────
+
+function renderPreview() {
+  const pane = document.getElementById('previewPane');
+  const sec = getSection();
+  if (!sec) {
+    pane.innerHTML = '<div class="preview-inner"><div class="pv-empty">← Select a section to preview</div></div>';
+    return;
+  }
+
+  const header = sec.id === 'global'
+    ? `<div class="preview-header">
+         <div class="preview-logo">VA<span>N</span></div>
+         <h2 class="preview-title">Managed Buyer Support</h2>
+       </div>`
+    : `<div style="font-size:11px;color:#718096;margin-bottom:18px;padding-bottom:10px;border-bottom:1px solid #e2e8f0;">
+         Section shown when: <strong style="color:#33475b;">${(sec.subtitle ?? '').replace('Shows when ','')}</strong>
+       </div>`;
+
+  const fieldsHtml = sec.fields.length
+    ? sec.fields.map(fieldToHTML).join('')
+    : '<div class="pv-empty">No fields in this section yet.</div>';
+
+  pane.innerHTML = `<div class="preview-inner">${header}${fieldsHtml}</div>`;
+}
+
+function fieldToHTML(f) {
+  const req = f.required ? `<span class="pv-req"> *</span>` : '';
+  const label = `<label class="pv-label">${f.name}${req}</label>`;
+  let input;
+  switch (f.type) {
+    case 'email':
+      input = `<input class="pv-input" type="email" placeholder="your@email.com" disabled>`; break;
+    case 'text':
+      input = `<input class="pv-input" type="text" placeholder="${f.name}" disabled>`; break;
+    case 'number':
+      input = `<input class="pv-input" type="number" placeholder="0" disabled>`; break;
+    case 'select':
+      input = `<select class="pv-select" disabled><option>Please Select</option></select>`; break;
+    case 'radio':
+      input = `<div class="pv-radio">
+        <label><input type="radio" disabled> Yes</label>
+        <label><input type="radio" disabled> No</label>
+      </div>`; break;
+    case 'checkbox':
+      input = `<div class="pv-checkbox">
+        <label><input type="checkbox" disabled> Option 1</label>
+        <label><input type="checkbox" disabled> Option 2</label>
+        <label><input type="checkbox" disabled> Option 3</label>
+      </div>`; break;
+    case 'textarea':
+      input = `<textarea class="pv-textarea" placeholder="Describe..." disabled></textarea>`; break;
+    case 'file':
+      input = `<div><button class="pv-file-btn" type="button" disabled>Choose File</button></div>`; break;
+    default:
+      input = `<input class="pv-input" type="text" disabled>`;
+  }
+  return `<div class="pv-field">${label}${input}</div>`;
+}
+
+// ── PRIORITY BOARD ────────────────────────────────────────────────────────────
+
+function renderPriorityBoard() {
+  const container = document.getElementById('pbRules');
+  container.innerHTML = '';
+  data.priorityRules.forEach(rule => {
+    const card = document.createElement('div');
+    card.className = 'pb-rule ' + rule.cls;
+
+    function cell(extraCls, value, key) {
+      const el = document.createElement('div');
+      el.className = extraCls ? 'pb-cell ' + extraCls : 'pb-cell';
+      el.contentEditable = 'true';
+      el.textContent = value;
+      el.title = 'Click to edit';
+      el.oninput = () => { rule[key] = el.textContent.trim(); };
+      return el;
+    }
+
+    const arrow = document.createElement('span');
+    arrow.textContent = '→ ';
+    arrow.style.cssText = 'font-size:10px;color:#4a5568;user-select:none;';
+
+    card.appendChild(cell('pb-priority', rule.priority, 'priority'));
+    card.appendChild(cell('', rule.condition, 'condition'));
+    card.appendChild(arrow);
+    card.appendChild(cell('', rule.owner, 'owner'));
+    container.appendChild(card);
+  });
+}
+
+// ── EXPORT ────────────────────────────────────────────────────────────────────
+
+function buildExportText() {
+  let out = '## FORM STRUCTURE — MB Ticket System\n';
+  out += 'Exported: ' + new Date().toLocaleDateString('en-CA') + '\n\n';
+
+  data.sections.forEach(sec => {
+    const heading = sec.group ? sec.group + ' › ' + sec.label : sec.label;
+    out += '### ' + heading + '\n';
+    if (!sec.fields.length) {
+      out += '  (no fields)\n';
+    } else {
+      sec.fields.forEach(f => {
+        out += `  - ${f.name} [${f.type}]${f.required ? ' *' : ''}\n`;
+      });
+    }
+    if (sec.notes && sec.notes.trim()) {
+      out += `  NOTE: ${sec.notes.trim()}\n`;
+    }
+    out += '\n';
+  });
+
+  out += '## PRIORITY ROUTING\n';
+  data.priorityRules.forEach(r => {
+    if (r.condition || r.priority || r.owner)
+      out += `  - ${r.condition} → ${r.priority} → ${r.owner}\n`;
+  });
+  out += '\n';
+
+  return out;
+}
+
+function openExport() {
+  document.getElementById('exportPre').textContent = buildExportText();
+  document.getElementById('modalBg').classList.add('open');
+  document.getElementById('copyBtn').textContent = 'Copy to clipboard';
+  document.getElementById('copyBtn').className = 'copy-btn';
+}
+
+function closeExport() {
+  document.getElementById('modalBg').classList.remove('open');
+}
+
+function copyExport() {
+  const btn = document.getElementById('copyBtn');
+  if (!navigator.clipboard) {
+    btn.textContent = 'Not available — select text manually';
+    return;
+  }
+  const text = document.getElementById('exportPre').textContent;
+  navigator.clipboard.writeText(text)
+    .then(() => { btn.textContent = 'Copied!'; btn.className = 'copy-btn ok'; })
+    .catch(() => { btn.textContent = 'Copy failed — select text manually'; });
+}
+
+document.getElementById('modalBg').addEventListener('click', e => {
+  if (e.target === document.getElementById('modalBg')) closeExport();
+});
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+renderSidebar();        // Task 3
+renderPriorityBoard();  // Task 5
+</script>
+</body>
+</html>
