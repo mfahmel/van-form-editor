@@ -332,10 +332,9 @@ const data = {
         {id:'vf1', name:'Which feature? (free-form — covers feature name + what happens + error + data)', type:'textarea', required:true},
       ]},
     { id:'kameleo', label:'Kameleo / VPN Issue', group:null,
-      subtitle:'Shows when Issue Type = Kameleo / VPN Issue.', notes:'v5: removed "Specific error seen" (duplicate). "What have you tried?" now required. Global Issue description hidden for this type.',
+      subtitle:'Shows when Issue Type = Kameleo / VPN Issue.', notes:'v5 (post-junta 2026-05-07): removed BOTH "Specific error seen" AND "Exact error code or message" (Mary + Max decision in meeting — patterns not yet clear, "What problem do you see" + "What have you tried" cover it). "What have you tried?" now required. Global Issue description hidden for this type.',
       fields:[
         {id:'km1', name:'What problem do you see?', type:'textarea', required:true},
-        {id:'km4', name:'Exact error code or message', type:'textarea', required:true},
         {id:'km5', name:'What have you tried?', type:'textarea', required:true},
         {id:'km6', name:'Did you ask the team in Chat?', type:'radio', required:false},
         {id:'km7', name:'Issue screenshot', type:'file', required:true},
